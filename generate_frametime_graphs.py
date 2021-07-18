@@ -43,8 +43,8 @@ def scrape_display_info(device):
     try:
         return subprocess.check_output([cmd], shell=True).split()[0]
     except subprocess.CalledProcessError:
-        print "Unable to execute ADB command."
-        print "If there is more than one device, specify which."
+        print ("Unable to execute ADB command.")
+        print ("If there is more than one device, specify which.")
         sys.exit()
 
 def scrape_gfxinfo(device, seconds, package):
@@ -56,10 +56,10 @@ def scrape_gfxinfo(device, seconds, package):
         target = "" if (device is None or len(device) == 0) else "-s " + device 
         cmd = "adb {} shell dumpsys gfxinfo {}".format(target, package)
         try:
-            dumpsys_output = subprocess.check_output([cmd], shell=True)
+            dumpsys_output = subprocess.check_output([cmd], shell=True).decode()
         except subprocess.CalledProcessError:
-            print "Unable to execute ADB command."
-            print "If there is more than one device, specify which."
+            print ("Unable to execute ADB command.")
+            print ("If there is more than one device, specify which.")
             sys.exit()
 
         for line in dumpsys_output.split("\n"):
@@ -74,7 +74,7 @@ def scrape_gfxinfo(device, seconds, package):
                 if "Process Execute".split() == line.split()[-2:]:
                     in_section = True
 
-        print "\tRound {} done, now have {} frames.".format(second, len(results))
+        print ("\tRound {} done, now have {} frames.".format(second, len(results)))
         if second < seconds:
             time.sleep(1)
 
@@ -85,13 +85,13 @@ def draw_frames(collected_frames, title, fps):
     number_stages = len(collected_frames[0])
     number_frames = len(collected_frames)
 
-    collected_draw = numpy.array(zip(*collected_frames)[0])
+    collected_draw = numpy.array(list(zip(*collected_frames))[0])
     if number_stages > 3:
-        collected_prepare = numpy.array(zip(*collected_frames)[1])
+        collected_prepare = numpy.array(list(zip(*collected_frames))[1])
     else:
         collected_prepare = numpy.zeros(number_frames)
-    collected_process = numpy.array(zip(*collected_frames)[number_stages - 2])
-    collected_execute = numpy.array(zip(*collected_frames)[number_stages - 1])
+    collected_process = numpy.array(list(zip(*collected_frames))[number_stages - 2])
+    collected_execute = numpy.array(list(zip(*collected_frames))[number_stages - 1])
 
     #Create a bar graph for each stage and stack them.
     collected_indexes = numpy.arange(number_frames)
@@ -118,6 +118,10 @@ def draw_frames(collected_frames, title, fps):
                            bottom=collected_totals)
     collected_totals = collected_totals + collected_execute
 
+    my_y_ticks = numpy.linspace(0, 60, 12)
+    plot.yticks(my_y_ticks)
+    plot.ylim((0, 60))
+
     plot.ylabel('time in ms')
     plot.xlabel('frame')
     plot.title(title)
@@ -133,13 +137,13 @@ def draw_frames(collected_frames, title, fps):
     est_dropped = estimate_dropped_frames(fps, collected_totals)
 
     summary = """Median: {}ms \nAverage: {}ms \nDevice framerate: {} \nEstimated dropped frames: {}""".format(median, average, fps, est_dropped)
-    print summary
+    print (summary)
 
     #Plot and save to disk.
     plot.text(info_x_coordinate, info_y_coordinate, summary)
     filename = title + ".png"
     plot.savefig(filename)
-    print "Saved {} frames to graph as {}.".format(len(collected_totals), filename)
+    print ("Saved {} frames to graph as {}.".format(len(collected_totals), filename))
 
 def main(sys_args):
     parser = argparse.ArgumentParser(description='Generate frame time graph for a connected ADB device.')
@@ -158,7 +162,7 @@ def main(sys_args):
         fps = scrape_display_info(args.device)
         draw_frames(frames, args.graph_title, fps)
     else:
-        print "Got no frames. Is collection enabled & {} drawing?".format(args.package_name[0])
+        print ("Got no frames. Is collection enabled & {} drawing?".format(args.package_name[0]))
 
 if __name__ == "__main__":
     main(sys.argv[1:]) 
