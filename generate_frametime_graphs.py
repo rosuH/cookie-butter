@@ -36,12 +36,16 @@ def estimate_dropped_frames(fps, collected_totals):
             dropped_frames += 1
     return dropped_frames
 
-def scrape_display_info(device):
+def scrape_display_info(device, frame_rate):
     """Grab frame rate info via dumpsys display. Return fps as a string."""
     target = "" if (device is None or len(device) == 0) else "-s " + device 
     cmd = "adb {} shell dumpsys display | grep PhysicalDisplayInfo | cut -d ',' -f 2".format(target)
     try:
-        return subprocess.check_output([cmd], shell=True).split()[0]
+        fps = subprocess.check_output([cmd], shell=True)
+        if fps:
+            return fps.split()[0]
+        else :
+            return frame_rate
     except subprocess.CalledProcessError:
         print ("Unable to execute ADB command.")
         print ("If there is more than one device, specify which.")
@@ -129,8 +133,8 @@ def draw_frames(collected_frames, title, fps):
         (draw_bar[0], prepare_bar[0], process_bar[0], execute_bar[0]),
         ('Draw', 'Prepare', 'Process', 'Execute'))
 
-    info_y_coordinate = numpy.amax(collected_totals) * 0.9
-    info_x_coordinate = len(collected_totals) * 0.1
+    info_y_coordinate = 50
+    info_x_coordinate = len(collected_totals) * 0.5
 
     median = round(numpy.median(collected_totals))
     average = round(numpy.average(collected_totals))
@@ -140,7 +144,7 @@ def draw_frames(collected_frames, title, fps):
     print (summary)
 
     #Plot and save to disk.
-    plot.text(info_x_coordinate, info_y_coordinate, summary)
+    plot.text(info_x_coordinate, info_y_coordinate,s = summary, ha='center', va='center')
     filename = title + ".png"
     plot.savefig(filename)
     print ("Saved {} frames to graph as {}.".format(len(collected_totals), filename))
@@ -155,11 +159,16 @@ def main(sys_args):
                         default='ms_per_frame', help='title to use for graph')
     parser.add_argument('device', metavar='device', nargs='?',
                         help='direct to a specific ADB device')
+
+    parser.add_argument('--frame_rate', metavar='frame_rate', nargs='?',
+                        help='default frame rate of devices')
+
     args = parser.parse_args(sys_args)
 
     frames = scrape_gfxinfo(args.device, args.num_seconds, args.package_name[0])
     if len(frames) > 1:
-        fps = scrape_display_info(args.device)
+        print("frames == " + str(frames))
+        fps = scrape_display_info(args.device, args.frame_rate)
         draw_frames(frames, args.graph_title, fps)
     else:
         print ("Got no frames. Is collection enabled & {} drawing?".format(args.package_name[0]))
